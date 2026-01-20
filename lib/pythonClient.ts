@@ -1,12 +1,13 @@
 // Utility to check if Python backend is available and make requests
-const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || 'http://localhost:8000';
+const PYTHON_BACKEND_URL =
+  process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
 
 export async function callPythonBackend(endpoint: string, data: any) {
   try {
     const response = await fetch(`${PYTHON_BACKEND_URL}${endpoint}`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
       // Add timeout
@@ -19,7 +20,7 @@ export async function callPythonBackend(endpoint: string, data: any) {
 
     return await response.json();
   } catch (error) {
-    console.error('Python backend call failed:', error);
+    console.error("Python backend call failed:", error);
     throw error;
   }
 }

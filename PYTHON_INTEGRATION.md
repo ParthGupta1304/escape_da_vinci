@@ -12,11 +12,13 @@ The system automatically falls back to TypeScript implementations if Python back
 ## Setup
 
 ### 1. Install Node.js Dependencies
+
 ```bash
 npm install
 ```
 
 ### 2. Install Python Dependencies
+
 ```bash
 cd python_backend
 pip install -r requirements.txt
@@ -27,6 +29,7 @@ pip install -r requirements.txt
 ### Option 1: Run Both Servers Separately
 
 **Terminal 1 - Python Backend:**
+
 ```bash
 cd python_backend
 python main.py
@@ -34,12 +37,14 @@ python main.py
 ```
 
 **Terminal 2 - Next.js Frontend:**
+
 ```bash
 npm run dev
 # Runs on http://localhost:3000
 ```
 
 ### Option 2: Use Start Script (Recommended)
+
 ```bash
 ./start.sh
 # Starts both servers automatically
@@ -50,9 +55,11 @@ npm run dev
 The Python FastAPI server provides the following endpoints:
 
 ### `POST /api/python/column-types`
+
 Classifies columns into continuous, discrete, categorical, and datetime types.
 
 **Request:**
+
 ```json
 {
   "data": [{"col1": 1, "col2": "A"}, ...]
@@ -60,6 +67,7 @@ Classifies columns into continuous, discrete, categorical, and datetime types.
 ```
 
 **Response:**
+
 ```json
 {
   "continuous": ["col1"],
@@ -71,9 +79,11 @@ Classifies columns into continuous, discrete, categorical, and datetime types.
 ```
 
 ### `POST /api/python/descriptive`
+
 Generates descriptive statistics for numeric and categorical columns.
 
 **Request:**
+
 ```json
 {
   "data": [...],
@@ -82,6 +92,7 @@ Generates descriptive statistics for numeric and categorical columns.
 ```
 
 **Response:**
+
 ```json
 {
   "numeric": {"col1": {"mean": 5.2, ...}},
@@ -90,9 +101,11 @@ Generates descriptive statistics for numeric and categorical columns.
 ```
 
 ### `POST /api/python/diagnostic`
+
 Performs correlation analysis and multicollinearity detection.
 
 **Request:**
+
 ```json
 {
   "data": [...],
@@ -101,9 +114,11 @@ Performs correlation analysis and multicollinearity detection.
 ```
 
 ### `POST /api/python/predictive`
+
 Trains baseline ML models (classification/regression/clustering).
 
 **Request:**
+
 ```json
 {
   "data": [...],
@@ -113,6 +128,7 @@ Trains baseline ML models (classification/regression/clustering).
 ```
 
 **Response:**
+
 ```json
 {
   "targetColumn": "churn",
@@ -159,6 +175,7 @@ PYTHON_BACKEND_URL=http://localhost:8000
 ## Troubleshooting
 
 ### Python backend not starting
+
 ```bash
 # Check if port 8000 is already in use
 lsof -ti:8000
@@ -172,13 +189,16 @@ pip install --upgrade -r requirements.txt
 ```
 
 ### Matplotlib font cache issue
+
 If Python backend hangs on startup, matplotlib might be building font cache:
+
 ```bash
 # Clear matplotlib cache
 rm -rf ~/.matplotlib
 ```
 
 ### TypeScript fallback always used
+
 1. Verify Python backend is running: `curl http://localhost:8000/`
 2. Check browser console for connection errors
 3. Ensure CORS is properly configured
@@ -193,6 +213,7 @@ rm -rf ~/.matplotlib
 4. Add TypeScript fallback implementation
 
 ### Testing Python Backend
+
 ```bash
 # Test root endpoint
 curl http://localhost:8000/
@@ -206,6 +227,7 @@ curl -X POST http://localhost:8000/api/python/column-types \
 ## Production Deployment
 
 For production, consider:
+
 1. Deploy Python backend as separate service (e.g., AWS Lambda, Google Cloud Run)
 2. Update `PYTHON_BACKEND_URL` environment variable
 3. Enable authentication between services
@@ -215,6 +237,7 @@ For production, consider:
 ## Tech Stack
 
 **Frontend/API:**
+
 - Next.js 16 (App Router)
 - React 19
 - TypeScript
@@ -222,12 +245,14 @@ For production, consider:
 - Tailwind CSS
 
 **Python Backend:**
+
 - FastAPI
 - pandas
 - scikit-learn
 - NumPy
 
 **Data Processing:**
+
 - papaparse (CSV parsing)
 - xlsx (Excel parsing)
 - simple-statistics

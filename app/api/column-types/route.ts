@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { classifyColumns } from "@/lib/columnClassifier";
-import { callPythonBackend, isPythonBackendAvailable } from "@/lib/pythonClient";
+import {
+  callPythonBackend,
+  isPythonBackendAvailable,
+} from "@/lib/pythonClient";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,14 +18,18 @@ export async function POST(request: NextRequest) {
 
     // Try Python backend first
     const pythonAvailable = await isPythonBackendAvailable();
-    
+
     if (pythonAvailable) {
       try {
-        console.log('Using Python backend for column classification');
-        const result = await callPythonBackend('/api/python/column-types', { data });
+        console.log("Using Python backend for column classification");
+        const result = await callPythonBackend("/api/python/column-types", {
+          data,
+        });
         return NextResponse.json(result.columnProfile);
       } catch (error) {
-        console.warn('Python backend failed, falling back to TypeScript implementation');
+        console.warn(
+          "Python backend failed, falling back to TypeScript implementation"
+        );
       }
     }
 
