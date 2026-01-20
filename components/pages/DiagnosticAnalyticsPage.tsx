@@ -1,54 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import PageContainer from "@/components/PageContainer";
 import DataTable from "@/components/DataTable";
+import { useDatasetStore } from "@/lib/datasetStore";
 
-const correlationData = [
-  {
-    pair: "tenure ↔ total_charges",
-    pearson: 0.83,
-    spearman: 0.89,
-    kendall: 0.71,
-    interpretation: "Strong positive monotonic relationship",
-  },
-  {
-    pair: "monthly_charges ↔ total_charges",
-    pearson: 0.65,
-    spearman: 0.62,
-    kendall: 0.47,
-    interpretation: "Moderate positive correlation",
-  },
-  {
-    pair: "tenure ↔ monthly_charges",
-    pearson: 0.25,
-    spearman: 0.28,
-    kendall: 0.19,
-    interpretation: "Weak positive correlation",
-  },
-];
-
-const multicollinearityData = [
-  {
-    feature: "tenure",
-    vif: 1.34,
-    status: "Acceptable",
-    color: "var(--status-success)",
-  },
-  {
-    feature: "monthly_charges",
-    vif: 2.18,
-    status: "Acceptable",
-    color: "var(--status-success)",
-  },
-  {
-    feature: "total_charges",
-    vif: 3.92,
-    status: "Moderate",
-    color: "var(--status-warning)",
-  },
-];
-
-const columns = [
+const correlationColumns = [
   { key: "pair", label: "Feature Pair", sortable: true, width: "25%" },
   { key: "pearson", label: "Pearson r", sortable: true, width: "15%" },
   { key: "spearman", label: "Spearman ρ", sortable: true, width: "15%" },
@@ -67,83 +24,361 @@ const vifColumns = [
   { key: "status", label: "Status", sortable: true, width: "40%" },
 ];
 
+function getVifStatusColor(status: string): string {
+  switch (status.toLowerCase()) {
+    case "acceptable":
+      return "var(--status-success)";
+    case "moderate":
+      return "var(--status-warning)";
+    case "high":
+      return "var(--status-error)";
+    default:
+      return "var(--text-secondary)";
+  }
+}
+
 export default function DiagnosticAnalyticsPage() {
+  const store = useDatasetStore();
+  const { diagnosticStats, columnProfile, loading, errors } = store;
+  const isLoading = loading.diagnostic;
+  const error = errors.diagnostic;
+
+  // Transform correlation data for table
+  const correlationData = useMemo(() => {
+    return diagnosticStats.correlations.map((corr) => ({
+      pair: corr.pair,
+      pearson: corr.pearson?.toFixed(2) || "—",
+      spearman: corr.spearman?.toFixed(2) || "—",
+      kendall: corr.kendall?.toFixed(2) || "—",
+      interpretation: corr.interpretation,
+    }));
+  }, [diagnosticStats.correlations]);
+
+  // Transform multicollinearity data for table
+  const multicollinearityData = useMemo(() => {
+    return diagnosticStats.multicollinearity.map((item) => ({
+      feature: item.feature,
+      vif: item.vif?.toFixed(2) || "—",
+      status: item.status.charAt(0).toUpperCase() + item.status.slice(1),
+      color: getVifStatusColor(item.status),
+    }));
+  }, [diagnosticStats.multicollinearity]);
+
+  // Get numeric columns for heatmap
+  const numericColumns = useMemo(() => {
+    return columnProfile.filter(
+      (col) => col.detectedType === "continuous" || col.detectedType === "discrete"
+    );
+  }, [columnProfile]);
+
+  // Build correlation matrix from pairs
+  const correlationMatrix = useMemo(() => {
+    if (diagnosticStats.pearsonMatrix && diagnosticStats.pearsonMatrix.length > 0) {
+      return diagnosticStats.pearsonMatrix;
+    }
+    
+    // Build from correlation pairs if matrix not available
+    const numCols = numericColumns.map((c) => c.column);
+    const size = numCols.length;
+    const matrix: number[][] = Array(size)
+      .fill(null)
+      .map(() => Array(size).fill(0));
+
+    // Fill diagonal with 1s
+    for (let i = 0; i < size; i++) {
+      matrix[i][i] = 1;
+    }
+
+    // Fill from correlation pairs
+    diagnosticStats.correlations.forEach((corr) => {
+      const [col1, col2] = corr.pair.split(" ↔ ");
+      const i = numCols.indexOf(col1);
+      const j = numCols.indexOf(col2);
+      if (i !== -1 && j !== -1) {
+        matrix[i][j] = corr.pearson;
+        matrix[j][i] = corr.pearson;
+      }
+    });
+
+    return matrix;
+  }, [diagnosticStats, numericColumns]);
+
+  // Get key findings summary
+  const keyFindings = useMemo(() => {
+    const findings: string[] = [];
+
+    // Strong correlations
+    const strongCorrs = diagnosticStats.correlations.filter(
+      (c) => Math.abs(c.pearson) >= 0.7
+    );
+    if (strongCorrs.length > 0) {
+      const strongest = strongCorrs.reduce((a, b) =>
+        Math.abs(a.pearson) > Math.abs(b.pearson) ? a : b
+      );
+      findings.push(
+        `Strong correlation detected between ${strongest.pair} (Pearson r = ${strongest.pearson.toFixed(2)}). ${strongest.interpretation}`
+      );
+    }
+
+    // High VIF warnings
+    const highVif = diagnosticStats.multicollinearity.filter(
+      (m) => m.status === "high"
+    );
+    if (highVif.length > 0) {
+      findings.push(
+        `High multicollinearity detected in ${highVif.map((h) => h.feature).join(", ")} (VIF > 10). Consider feature selection or dimensionality reduction.`
+      );
+    }
+
+    // Moderate VIF notes
+    const moderateVif = diagnosticStats.multicollinearity.filter(
+      (m) => m.status === "moderate"
+    );
+    if (moderateVif.length > 0) {
+      findings.push(
+        `Moderate VIF scores for ${moderateVif.map((m) => m.feature).join(", ")}. Monitor for potential redundancy in linear models.`
+      );
+    }
+
+    if (findings.length === 0) {
+      findings.push("No significant multicollinearity issues detected. Feature set appears suitable for modeling.");
+    }
+
+    return findings;
+  }, [diagnosticStats]);
+
+  // Empty state
+  if (!isLoading && correlationData.length === 0 && multicollinearityData.length === 0) {
+    return (
+      <PageContainer
+        title="Diagnostic Analytics"
+        subtitle="TIER 4 — Correlation analysis and multicollinearity diagnostics"
+      >
+        <div
+          style={{
+            padding: "64px",
+            textAlign: "center",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--border-subtle)",
+            color: "var(--text-tertiary)",
+            fontSize: "14px",
+          }}
+        >
+          No diagnostic data available. Please upload a dataset with numeric features first.
+        </div>
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer
       title="Diagnostic Analytics"
       subtitle="TIER 4 — Correlation analysis and multicollinearity diagnostics"
     >
-      {/* Correlation Analysis */}
-      <div style={{ marginBottom: "48px" }}>
-        <h3
-          style={{
-            fontSize: "16px",
-            fontWeight: 600,
-            color: "var(--text-primary)",
-            marginBottom: "16px",
-          }}
-        >
-          Strong Correlations
-        </h3>
-        <DataTable columns={columns} data={correlationData} />
-      </div>
-
-      {/* Multicollinearity */}
-      <div style={{ marginBottom: "48px" }}>
-        <h3
-          style={{
-            fontSize: "16px",
-            fontWeight: 600,
-            color: "var(--text-primary)",
-            marginBottom: "16px",
-          }}
-        >
-          Multicollinearity Detection (VIF Analysis)
-        </h3>
-        <DataTable columns={vifColumns} data={multicollinearityData} />
+      {/* Loading State */}
+      {isLoading && (
         <div
           style={{
-            marginTop: "16px",
-            padding: "16px 20px",
-            background: "var(--bg-tertiary)",
-            border: "1px solid var(--border-subtle)",
-            fontSize: "12px",
-            color: "var(--text-tertiary)",
-          }}
-        >
-          VIF Thresholds: &lt; 5 = Acceptable · 5-10 = Moderate · &gt; 10 = High
-          multicollinearity
-        </div>
-      </div>
-
-      {/* Correlation Heatmap Placeholder */}
-      <div style={{ marginBottom: "48px" }}>
-        <h3
-          style={{
-            fontSize: "16px",
-            fontWeight: 600,
-            color: "var(--text-primary)",
-            marginBottom: "16px",
-          }}
-        >
-          Pearson Correlation Matrix
-        </h3>
-        <div
-          style={{
-            padding: "48px",
+            padding: "24px",
+            textAlign: "center",
             background: "var(--bg-secondary)",
             border: "1px solid var(--border-subtle)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "400px",
-            color: "var(--text-tertiary)",
-            fontSize: "13px",
+            marginBottom: "24px",
+            color: "var(--text-secondary)",
+            fontSize: "14px",
           }}
         >
-          Correlation heatmap visualization (3 numeric features)
+          Computing diagnostic statistics...
         </div>
-      </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div
+          style={{
+            padding: "16px 20px",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--status-error)",
+            color: "var(--status-error)",
+            fontSize: "13px",
+            marginBottom: "24px",
+          }}
+        >
+          Error: {error}
+        </div>
+      )}
+
+      {/* Correlation Analysis */}
+      {correlationData.length > 0 && (
+        <div style={{ marginBottom: "48px" }}>
+          <h3
+            style={{
+              fontSize: "16px",
+              fontWeight: 600,
+              color: "var(--text-primary)",
+              marginBottom: "16px",
+            }}
+          >
+            Strong Correlations
+          </h3>
+          <DataTable columns={correlationColumns} data={correlationData} />
+        </div>
+      )}
+
+      {/* Multicollinearity */}
+      {multicollinearityData.length > 0 && (
+        <div style={{ marginBottom: "48px" }}>
+          <h3
+            style={{
+              fontSize: "16px",
+              fontWeight: 600,
+              color: "var(--text-primary)",
+              marginBottom: "16px",
+            }}
+          >
+            Multicollinearity Detection (VIF Analysis)
+          </h3>
+          <DataTable columns={vifColumns} data={multicollinearityData} />
+          <div
+            style={{
+              marginTop: "16px",
+              padding: "16px 20px",
+              background: "var(--bg-tertiary)",
+              border: "1px solid var(--border-subtle)",
+              fontSize: "12px",
+              color: "var(--text-tertiary)",
+            }}
+          >
+            VIF Thresholds: &lt; 5 = Acceptable · 5-10 = Moderate · &gt; 10 = High
+            multicollinearity
+          </div>
+        </div>
+      )}
+
+      {/* Correlation Heatmap */}
+      {numericColumns.length > 0 && correlationMatrix.length > 0 && (
+        <div style={{ marginBottom: "48px" }}>
+          <h3
+            style={{
+              fontSize: "16px",
+              fontWeight: 600,
+              color: "var(--text-primary)",
+              marginBottom: "16px",
+            }}
+          >
+            Pearson Correlation Matrix
+          </h3>
+          <div
+            style={{
+              padding: "24px",
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border-subtle)",
+              overflowX: "auto",
+            }}
+          >
+            <table
+              style={{
+                borderCollapse: "collapse",
+                fontSize: "12px",
+                width: "auto",
+              }}
+            >
+              <thead>
+                <tr>
+                  <th
+                    style={{
+                      padding: "8px 12px",
+                      textAlign: "left",
+                      background: "var(--bg-tertiary)",
+                      border: "1px solid var(--border-subtle)",
+                      fontWeight: 600,
+                      color: "var(--text-primary)",
+                    }}
+                  ></th>
+                  {numericColumns.map((col) => (
+                    <th
+                      key={col.column}
+                      style={{
+                        padding: "8px 12px",
+                        textAlign: "center",
+                        background: "var(--bg-tertiary)",
+                        border: "1px solid var(--border-subtle)",
+                        fontWeight: 600,
+                        color: "var(--text-primary)",
+                        minWidth: "80px",
+                      }}
+                    >
+                      {col.column.length > 12
+                        ? col.column.slice(0, 12) + "..."
+                        : col.column}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {numericColumns.map((rowCol, i) => (
+                  <tr key={rowCol.column}>
+                    <td
+                      style={{
+                        padding: "8px 12px",
+                        background: "var(--bg-tertiary)",
+                        border: "1px solid var(--border-subtle)",
+                        fontWeight: 600,
+                        color: "var(--text-primary)",
+                      }}
+                    >
+                      {rowCol.column.length > 12
+                        ? rowCol.column.slice(0, 12) + "..."
+                        : rowCol.column}
+                    </td>
+                    {numericColumns.map((colCol, j) => {
+                      const value = correlationMatrix[i]?.[j] ?? 0;
+                      const absValue = Math.abs(value);
+                      let bgColor = "var(--bg-secondary)";
+                      if (i !== j) {
+                        if (absValue >= 0.7) {
+                          bgColor = value > 0 ? "#15803d33" : "#b91c1c33";
+                        } else if (absValue >= 0.4) {
+                          bgColor = value > 0 ? "#15803d1a" : "#b91c1c1a";
+                        }
+                      } else {
+                        bgColor = "var(--bg-tertiary)";
+                      }
+                      return (
+                        <td
+                          key={colCol.column}
+                          style={{
+                            padding: "8px 12px",
+                            textAlign: "center",
+                            border: "1px solid var(--border-subtle)",
+                            background: bgColor,
+                            color:
+                              absValue >= 0.7
+                                ? "var(--text-primary)"
+                                : "var(--text-secondary)",
+                            fontWeight: absValue >= 0.7 ? 600 : 400,
+                          }}
+                        >
+                          {value.toFixed(2)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div
+            style={{
+              marginTop: "12px",
+              fontSize: "11px",
+              color: "var(--text-tertiary)",
+            }}
+          >
+            {numericColumns.length} numeric features analyzed
+          </div>
+        </div>
+      )}
 
       {/* Key Findings */}
       <div
@@ -166,20 +401,11 @@ export default function DiagnosticAnalyticsPage() {
         >
           Key Findings
         </div>
-        <p style={{ marginBottom: "12px" }}>
-          <strong style={{ color: "var(--text-primary)" }}>
-            Strong monotonic relationship
-          </strong>{" "}
-          detected between tenure and total_charges (Spearman ρ = 0.89). This is
-          expected as total charges accumulate over customer tenure. Spearman
-          correlation exceeds Pearson, indicating non-linear monotonic pattern.
-        </p>
-        <p>
-          Multicollinearity assessment: total_charges shows moderate VIF (3.92),
-          suggesting some redundancy with tenure. Consider feature engineering
-          or dimensionality reduction if building linear models. No features
-          exceed critical VIF threshold of 10.
-        </p>
+        {keyFindings.map((finding, idx) => (
+          <p key={idx} style={{ marginBottom: idx < keyFindings.length - 1 ? "12px" : 0 }}>
+            {finding}
+          </p>
+        ))}
       </div>
     </PageContainer>
   );

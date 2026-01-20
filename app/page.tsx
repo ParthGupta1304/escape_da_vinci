@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Header from "@/components/Header";
 import Navigation from "@/components/Navigation";
+import LandingPage from "@/components/pages/LandingPage";
 import OverviewPage from "@/components/pages/OverviewPage";
 import IngestionPage from "@/components/pages/IngestionPage";
 import ColumnIntelligencePage from "@/components/pages/ColumnIntelligencePage";
@@ -12,9 +13,22 @@ import PredictiveAnalyticsPage from "@/components/pages/PredictiveAnalyticsPage"
 import PrescriptiveAnalyticsPage from "@/components/pages/PrescriptiveAnalyticsPage";
 import ExportPage from "@/components/pages/ExportPage";
 import AIAssistantPage from "@/components/pages/AIAssistantPage";
+import { useDatasetStore } from "@/lib/datasetStore";
 
 export default function Home() {
   const [activePage, setActivePage] = useState("overview");
+  const store = useDatasetStore();
+  const isLanding = store.isLanding;
+
+  const handleUploadComplete = () => {
+    // After upload, navigate to overview
+    setActivePage("overview");
+  };
+
+  // Show landing page if no data has been uploaded
+  if (isLanding) {
+    return <LandingPage onUploadComplete={handleUploadComplete} />;
+  }
 
   return (
     <div

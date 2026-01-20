@@ -8,33 +8,42 @@ import { getNumericValues } from "./utils";
 
 /**
  * Train baseline predictive model
+ * @param data - The cleaned dataset
+ * @param columnProfile - Column type profiles
+ * @param targetColumn - Optional user-specified target column (auto-detect if not provided)
  */
 export function trainBaselineModel(
   data: any[],
-  columnProfile: ColumnProfile[]
+  columnProfile: ColumnProfile[],
+  targetColumn?: string
 ): PredictiveResults | null {
   if (data.length < 10) return null;
 
-  // Auto-detect target
-  const targetColumn = autoDetectTarget(data, columnProfile);
-  if (!targetColumn) {
+  // Use provided target or auto-detect
+  const finalTarget = targetColumn || autoDetectTarget(data, columnProfile);
+  if (!finalTarget) {
     return trainClusteringModel(data, columnProfile);
   }
 
-  const taskType = determineTaskType(data, targetColumn, columnProfile);
-  const features = selectFeatures(data, targetColumn, columnProfile);
+  // Validate that target column exists
+  if (targetColumn && !columnProfile.some(col => col.column === targetColumn)) {
+    return null;
+  }
+
+  const taskType = determineTaskType(data, finalTarget, columnProfile);
+  const features = selectFeatures(data, finalTarget, columnProfile);
 
   if (features.length === 0) return null;
 
   if (taskType === "classification") {
     return trainClassificationModel(
       data,
-      targetColumn,
+      finalTarget,
       features,
       columnProfile
     );
   } else if (taskType === "regression") {
-    return trainRegressionModel(data, targetColumn, features, columnProfile);
+    return trainRegressionModel(data, finalTarget, features, columnProfile);
   }
 
   return null;

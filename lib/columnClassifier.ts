@@ -12,6 +12,20 @@ export function classifyColumns(data: any[]): ColumnProfile[] {
 }
 
 /**
+ * Detect if a column is likely an ID column
+ */
+function isIdColumn(columnName: string, values: any[], uniqueRatio: number): boolean {
+  const name = columnName.toLowerCase();
+  const idPatterns = ['id', '_id', 'key', 'code', 'number', 'no', 'num'];
+  const hasIdName = idPatterns.some(p => name.includes(p)) || name.endsWith('id');
+  
+  // High uniqueness (almost all values are unique)
+  const isHighlyUnique = uniqueRatio > 0.8;
+  
+  return hasIdName && isHighlyUnique;
+}
+
+/**
  * Classify a single column
  */
 export function classifyColumn(data: any[], columnName: string): ColumnProfile {
@@ -22,14 +36,17 @@ export function classifyColumn(data: any[], columnName: string): ColumnProfile {
   const totalValues = data.length;
   const missingPct = ((totalValues - values.length) / totalValues) * 100;
   const uniqueValues = new Set(values).size;
-  const uniqueRatio = uniqueValues / values.length;
+  const uniqueRatio = values.length > 0 ? uniqueValues / values.length : 0;
 
-  // Check datetime first
-  if (detectDatetimeColumns(data, columnName)) {
+  // Check datetime first (only for string columns)
+  const firstValue = values[0];
+  const isStringColumn = typeof firstValue === 'string';
+  
+  if (isStringColumn && detectDatetimeColumns(data, columnName)) {
     return {
       column: columnName,
       detectedType: "datetime",
-      reasoning: "≥70% of values are parseable as dates/times",
+      reasoning: "Values are parseable as dates/times with date separators",
       uniqueValues,
       missingPct: Number(missingPct.toFixed(2)),
     };
@@ -41,49 +58,59 @@ export function classifyColumn(data: any[], columnName: string): ColumnProfile {
       .filter((v) => !isNaN(Number(v)))
       .map((v) => Number(v));
 
-    // Check if discrete (integers with low cardinality)
-    const allIntegers = numericValues.every((v) => Number.isInteger(v));
-
-    if (allIntegers && uniqueValues <= 20) {
-      return {
-        column: columnName,
-        detectedType: "discrete",
-        reasoning:
-          "Integer values with low cardinality (≤20 unique values), suitable for countable states",
-        uniqueValues,
-        missingPct: Number(missingPct.toFixed(2)),
-      };
-    }
-
-    // Check cardinality ratio for continuous
-    if (uniqueRatio > 0.05) {
+    // Check if ID column (high uniqueness, ID-like name)
+    if (isIdColumn(columnName, values, uniqueRatio)) {
       return {
         column: columnName,
         detectedType: "continuous",
-        reasoning:
-          "High-cardinality numeric measurement (unique ratio > 5%), continuous distribution",
+        reasoning: "ID-like column with high cardinality, treated as continuous identifier",
         uniqueValues,
         missingPct: Number(missingPct.toFixed(2)),
       };
     }
 
-    // Low cardinality numeric, still continuous
+    // Check if discrete (integers with low cardinality)
+    const allIntegers = numericValues.every((v) => Number.isInteger(v));
+    
+    // Binary column (0/1) - discrete
+    const uniqueSet = new Set(numericValues);
+    if (uniqueSet.size === 2 && uniqueSet.has(0) && uniqueSet.has(1)) {
+      return {
+        column: columnName,
+        detectedType: "discrete",
+        reasoning: "Binary indicator (0/1), suitable for classification target or flag",
+        uniqueValues,
+        missingPct: Number(missingPct.toFixed(2)),
+      };
+    }
+
+    // Low cardinality integers
+    if (allIntegers && uniqueValues <= 20 && uniqueRatio < 0.5) {
+      return {
+        column: columnName,
+        detectedType: "discrete",
+        reasoning: `Integer values with low cardinality (${uniqueValues} unique), suitable for countable states`,
+        uniqueValues,
+        missingPct: Number(missingPct.toFixed(2)),
+      };
+    }
+
+    // Continuous numeric
     return {
       column: columnName,
       detectedType: "continuous",
-      reasoning: "Numeric values with measurable precision",
+      reasoning: `High-cardinality numeric measurement (${uniqueValues} unique values), continuous distribution`,
       uniqueValues,
       missingPct: Number(missingPct.toFixed(2)),
     };
   }
 
-  // Categorical
+  // Categorical (non-numeric with limited unique values)
   if (uniqueRatio < 0.5 || uniqueValues <= 50) {
     return {
       column: columnName,
       detectedType: "categorical",
-      reasoning:
-        "Low cardinality with distinct named groups, suitable for categorization",
+      reasoning: `Low cardinality (${uniqueValues} unique) with distinct named groups`,
       uniqueValues,
       missingPct: Number(missingPct.toFixed(2)),
     };
