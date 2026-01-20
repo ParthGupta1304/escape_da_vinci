@@ -30,10 +30,11 @@ from models_json import infer_target_type, get_model_ready_features_df
 
 app = FastAPI(title="AutoML Python Backend")
 
-# CORS middleware
+# CORS middleware - Allow all origins for production deployment
+# In production, you can restrict this to your Vercel domain
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],  # Allow all origins, or specify ["https://your-vercel-app.vercel.app"]
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

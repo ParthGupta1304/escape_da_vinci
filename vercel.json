@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "env": {
+    "PYTHON_BACKEND_URL": "@python_backend_url"
+  },
+  "routes": [
+    {
+      "src": "/api/.*",
+      "dest": "/api/$1"
+    }
+  ]
+}
