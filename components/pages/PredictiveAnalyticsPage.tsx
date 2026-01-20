@@ -1,10 +1,6 @@
 "use client";
 
-<<<<<<< HEAD
-import { useState } from "react";
-=======
 import { useState, useMemo } from "react";
->>>>>>> 7fa5bdd (feat: Complete AutoML analytics platform with column classification fixes)
 import PageContainer from "@/components/PageContainer";
 import DataTable from "@/components/DataTable";
 import {
@@ -16,37 +12,10 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-<<<<<<< HEAD
-
-const featureData = [
-  { feature: "tenure", importance: 0.28, modelReady: "Yes" },
-  { feature: "monthly_charges", importance: 0.22, modelReady: "Yes" },
-  { feature: "total_charges", importance: 0.19, modelReady: "Yes" },
-  { feature: "contract", importance: 0.16, modelReady: "Yes (encoded)" },
-  {
-    feature: "internet_service",
-    importance: 0.09,
-    modelReady: "Yes (encoded)",
-  },
-  { feature: "payment_method", importance: 0.06, modelReady: "Yes (encoded)" },
-];
-
-const importanceChartData = [
-  { feature: "tenure", importance: 0.28 },
-  { feature: "monthly_charges", importance: 0.22 },
-  { feature: "total_charges", importance: 0.19 },
-  { feature: "contract", importance: 0.16 },
-  { feature: "internet_service", importance: 0.09 },
-  { feature: "payment_method", importance: 0.06 },
-];
-
-const columns = [
-=======
 import { useDatasetStore } from "@/lib/datasetStore";
 import api from "@/lib/api";
 
 const featureColumns = [
->>>>>>> 7fa5bdd (feat: Complete AutoML analytics platform with column classification fixes)
   { key: "feature", label: "Feature", sortable: true, width: "40%" },
   {
     key: "importance",
@@ -58,9 +27,6 @@ const featureColumns = [
 ];
 
 export default function PredictiveAnalyticsPage() {
-<<<<<<< HEAD
-  const [modelTrained, setModelTrained] = useState(true);
-=======
   const store = useDatasetStore();
   const { predictiveResults, columnProfile, cleanedData, loading, errors } = store;
   const isLoading = loading.predictive;
@@ -100,7 +66,7 @@ export default function PredictiveAnalyticsPage() {
   const targetClasses = useMemo(() => {
     if (!predictiveResults || !predictiveResults.targetColumn) return [];
     const targetCol = predictiveResults.targetColumn;
-    const uniqueValues = [...new Set(cleanedData.map((row: any) => row[targetCol]))];
+    const uniqueValues = [...new Set(cleanedData.map((row: Record<string, unknown>) => row[targetCol]))];
     return uniqueValues.slice(0, 10); // Limit to 10 classes for display
   }, [predictiveResults, cleanedData]);
 
@@ -133,11 +99,13 @@ export default function PredictiveAnalyticsPage() {
 
   // Format metric value
   const formatMetric = (key: string, value: number): string => {
-    if (key.toLowerCase().includes("accuracy") || 
-        key.toLowerCase().includes("precision") || 
-        key.toLowerCase().includes("recall") || 
-        key.toLowerCase().includes("f1") ||
-        key.toLowerCase().includes("score")) {
+    if (
+      key.toLowerCase().includes("accuracy") || 
+      key.toLowerCase().includes("precision") || 
+      key.toLowerCase().includes("recall") || 
+      key.toLowerCase().includes("f1") ||
+      key.toLowerCase().includes("score")
+    ) {
       return `${(value * 100).toFixed(1)}%`;
     }
     return value.toFixed(3);
@@ -186,103 +154,12 @@ export default function PredictiveAnalyticsPage() {
       </PageContainer>
     );
   }
->>>>>>> 7fa5bdd (feat: Complete AutoML analytics platform with column classification fixes)
 
   return (
     <PageContainer
       title="Predictive Analytics"
       subtitle="TIER 5 — Automated target detection and baseline model training"
     >
-<<<<<<< HEAD
-      {/* Target Detection */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "24px",
-          marginBottom: "48px",
-          padding: "24px",
-          background: "var(--bg-secondary)",
-          border: "1px solid var(--border-subtle)",
-        }}
-      >
-        <div>
-          <div
-            style={{
-              fontSize: "12px",
-              color: "var(--text-tertiary)",
-              marginBottom: "8px",
-            }}
-          >
-            Detected Target
-          </div>
-          <div
-            style={{
-              fontSize: "20px",
-              fontWeight: 600,
-              color: "var(--text-primary)",
-            }}
-          >
-            churn
-          </div>
-        </div>
-        <div>
-          <div
-            style={{
-              fontSize: "12px",
-              color: "var(--text-tertiary)",
-              marginBottom: "8px",
-            }}
-          >
-            Task Type
-          </div>
-          <div
-            style={{
-              fontSize: "20px",
-              fontWeight: 600,
-              color: "var(--text-primary)",
-            }}
-          >
-            Classification
-          </div>
-        </div>
-        <div>
-          <div
-            style={{
-              fontSize: "12px",
-              color: "var(--text-tertiary)",
-              marginBottom: "8px",
-            }}
-          >
-            Target Classes
-          </div>
-          <div
-            style={{
-              fontSize: "20px",
-              fontWeight: 600,
-              color: "var(--text-primary)",
-            }}
-          >
-            2 (Yes, No)
-          </div>
-        </div>
-      </div>
-
-      {/* Feature Table */}
-      <div style={{ marginBottom: "48px" }}>
-        <h3
-          style={{
-            fontSize: "16px",
-            fontWeight: 600,
-            color: "var(--text-primary)",
-            marginBottom: "16px",
-          }}
-        >
-          Model-Ready Features
-        </h3>
-        <DataTable columns={columns} data={featureData} />
-      </div>
-=======
       {/* Loading State */}
       {(isLoading || isTraining) && (
         <div
@@ -411,7 +288,6 @@ export default function PredictiveAnalyticsPage() {
           <DataTable columns={featureColumns} data={featureData} />
         </div>
       )}
->>>>>>> 7fa5bdd (feat: Complete AutoML analytics platform with column classification fixes)
 
       {/* Model Training */}
       <div style={{ marginBottom: "48px" }}>
@@ -432,27 +308,6 @@ export default function PredictiveAnalyticsPage() {
           >
             Baseline Model
           </h3>
-<<<<<<< HEAD
-          {!modelTrained && (
-            <button
-              onClick={() => setModelTrained(true)}
-              style={{
-                padding: "10px 20px",
-                background: "var(--color-navy)",
-                color: "white",
-                border: "none",
-                fontSize: "13px",
-                fontWeight: 500,
-                cursor: "pointer",
-              }}
-            >
-              Train Baseline Model
-            </button>
-          )}
-        </div>
-
-        {modelTrained && (
-=======
         </div>
 
         {/* Target Column Selector - shown when model not trained */}
@@ -562,17 +417,12 @@ export default function PredictiveAnalyticsPage() {
         )}
 
         {modelTrained && metrics && (
->>>>>>> 7fa5bdd (feat: Complete AutoML analytics platform with column classification fixes)
           <>
             {/* Metrics */}
             <div
               style={{
                 display: "grid",
-<<<<<<< HEAD
-                gridTemplateColumns: "repeat(4, 1fr)",
-=======
                 gridTemplateColumns: `repeat(${Math.min(Object.keys(metrics).length, 4)}, 1fr)`,
->>>>>>> 7fa5bdd (feat: Complete AutoML analytics platform with column classification fixes)
                 gap: "24px",
                 marginBottom: "32px",
                 padding: "24px",
@@ -580,266 +430,6 @@ export default function PredictiveAnalyticsPage() {
                 border: "1px solid var(--border-subtle)",
               }}
             >
-<<<<<<< HEAD
-              <div>
-                <div
-                  style={{
-                    fontSize: "12px",
-                    color: "var(--text-tertiary)",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Accuracy
-                </div>
-                <div
-                  style={{
-                    fontSize: "20px",
-                    fontWeight: 600,
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  79.3%
-                </div>
-              </div>
-              <div>
-                <div
-                  style={{
-                    fontSize: "12px",
-                    color: "var(--text-tertiary)",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Precision
-                </div>
-                <div
-                  style={{
-                    fontSize: "20px",
-                    fontWeight: 600,
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  68.2%
-                </div>
-              </div>
-              <div>
-                <div
-                  style={{
-                    fontSize: "12px",
-                    color: "var(--text-tertiary)",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Recall
-                </div>
-                <div
-                  style={{
-                    fontSize: "20px",
-                    fontWeight: 600,
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  54.7%
-                </div>
-              </div>
-              <div>
-                <div
-                  style={{
-                    fontSize: "12px",
-                    color: "var(--text-tertiary)",
-                    marginBottom: "8px",
-                  }}
-                >
-                  F1 Score
-                </div>
-                <div
-                  style={{
-                    fontSize: "20px",
-                    fontWeight: 600,
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  60.7%
-                </div>
-              </div>
-            </div>
-
-            {/* Feature Importance */}
-            <div style={{ marginBottom: "32px" }}>
-              <h3
-                style={{
-                  fontSize: "16px",
-                  fontWeight: 600,
-                  color: "var(--text-primary)",
-                  marginBottom: "16px",
-                }}
-              >
-                Feature Importance
-              </h3>
-              <div
-                style={{
-                  padding: "24px",
-                  background: "var(--bg-secondary)",
-                  border: "1px solid var(--border-subtle)",
-                  height: "300px",
-                }}
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={importanceChartData} layout="vertical">
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="var(--border-subtle)"
-                    />
-                    <XAxis
-                      type="number"
-                      tick={{ fill: "var(--text-tertiary)", fontSize: 12 }}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="feature"
-                      tick={{ fill: "var(--text-tertiary)", fontSize: 12 }}
-                      width={120}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: "var(--bg-secondary)",
-                        border: "1px solid var(--border-standard)",
-                        fontSize: "12px",
-                      }}
-                    />
-                    <Bar dataKey="importance" fill="var(--color-navy)" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Confusion Matrix */}
-            <div style={{ marginBottom: "32px" }}>
-              <h3
-                style={{
-                  fontSize: "16px",
-                  fontWeight: 600,
-                  color: "var(--text-primary)",
-                  marginBottom: "16px",
-                }}
-              >
-                Confusion Matrix
-              </h3>
-              <div
-                style={{
-                  padding: "32px",
-                  background: "var(--bg-secondary)",
-                  border: "1px solid var(--border-subtle)",
-                  display: "inline-block",
-                }}
-              >
-                <table style={{ borderCollapse: "collapse", fontSize: "13px" }}>
-                  <thead>
-                    <tr>
-                      <th
-                        style={{
-                          padding: "12px",
-                          textAlign: "center",
-                          fontWeight: 600,
-                        }}
-                      ></th>
-                      <th
-                        style={{
-                          padding: "12px",
-                          textAlign: "center",
-                          fontWeight: 600,
-                          color: "var(--text-secondary)",
-                        }}
-                      >
-                        Predicted: No
-                      </th>
-                      <th
-                        style={{
-                          padding: "12px",
-                          textAlign: "center",
-                          fontWeight: 600,
-                          color: "var(--text-secondary)",
-                        }}
-                      >
-                        Predicted: Yes
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td
-                        style={{
-                          padding: "12px",
-                          fontWeight: 600,
-                          color: "var(--text-secondary)",
-                        }}
-                      >
-                        Actual: No
-                      </td>
-                      <td
-                        style={{
-                          padding: "16px 32px",
-                          textAlign: "center",
-                          background: "var(--bg-tertiary)",
-                          fontSize: "18px",
-                          fontWeight: 600,
-                          border: "1px solid var(--border-subtle)",
-                        }}
-                      >
-                        1158
-                      </td>
-                      <td
-                        style={{
-                          padding: "16px 32px",
-                          textAlign: "center",
-                          fontSize: "18px",
-                          fontWeight: 600,
-                          border: "1px solid var(--border-subtle)",
-                          color: "var(--status-error)",
-                        }}
-                      >
-                        251
-                      </td>
-                    </tr>
-                    <tr>
-                      <td
-                        style={{
-                          padding: "12px",
-                          fontWeight: 600,
-                          color: "var(--text-secondary)",
-                        }}
-                      >
-                        Actual: Yes
-                      </td>
-                      <td
-                        style={{
-                          padding: "16px 32px",
-                          textAlign: "center",
-                          fontSize: "18px",
-                          fontWeight: 600,
-                          border: "1px solid var(--border-subtle)",
-                          color: "var(--status-error)",
-                        }}
-                      >
-                        140
-                      </td>
-                      <td
-                        style={{
-                          padding: "16px 32px",
-                          textAlign: "center",
-                          background: "var(--bg-tertiary)",
-                          fontSize: "18px",
-                          fontWeight: 600,
-                          border: "1px solid var(--border-subtle)",
-                        }}
-                      >
-                        169
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-=======
               {Object.entries(metrics).slice(0, 8).map(([key, value]) => (
                 <div key={key}>
                   <div
@@ -908,7 +498,7 @@ export default function PredictiveAnalyticsPage() {
                           border: "1px solid var(--border-standard)",
                           fontSize: "12px",
                         }}
-                        formatter={(value: number) => value.toFixed(3)}
+                        formatter={(value) => typeof value === 'number' ? value.toFixed(3) : value}
                       />
                       <Bar dataKey="importance" fill="var(--color-navy)" />
                     </BarChart>
@@ -1003,17 +593,12 @@ export default function PredictiveAnalyticsPage() {
                 </div>
               </div>
             )}
->>>>>>> 7fa5bdd (feat: Complete AutoML analytics platform with column classification fixes)
           </>
         )}
       </div>
 
       {/* Model Insights */}
-<<<<<<< HEAD
-      {modelTrained && (
-=======
       {modelTrained && predictiveResults && (
->>>>>>> 7fa5bdd (feat: Complete AutoML analytics platform with column classification fixes)
         <div
           style={{
             padding: "20px 24px",
@@ -1035,35 +620,6 @@ export default function PredictiveAnalyticsPage() {
             Model Assessment
           </div>
           <p style={{ marginBottom: "12px" }}>
-<<<<<<< HEAD
-            Baseline Random Forest classifier achieves{" "}
-            <strong style={{ color: "var(--text-primary)" }}>
-              79.3% accuracy
-            </strong>{" "}
-            with moderate precision (68.2%) and recall (54.7%). Model exhibits
-            conservative prediction behavior, favoring false negatives over
-            false positives.
-          </p>
-          <p>
-            Top predictive features:{" "}
-            <strong style={{ color: "var(--text-primary)" }}>
-              tenure (0.28)
-            </strong>
-            ,
-            <strong style={{ color: "var(--text-primary)" }}>
-              {" "}
-              monthly_charges (0.22)
-            </strong>
-            , and{" "}
-            <strong style={{ color: "var(--text-primary)" }}>
-              total_charges (0.19)
-            </strong>
-            . Contract type shows moderate importance (0.16), suggesting
-            contractual commitment impacts churn likelihood. Consider feature
-            engineering and hyperparameter tuning to improve recall for minority
-            class.
-          </p>
-=======
             Baseline {predictiveResults.modelType || "model"} trained on{" "}
             <strong style={{ color: "var(--text-primary)" }}>
               {predictiveResults.featuresUsed?.length || 0} features
@@ -1111,7 +667,6 @@ export default function PredictiveAnalyticsPage() {
               . Consider feature engineering and hyperparameter tuning for improved performance.
             </p>
           )}
->>>>>>> 7fa5bdd (feat: Complete AutoML analytics platform with column classification fixes)
         </div>
       )}
     </PageContainer>
