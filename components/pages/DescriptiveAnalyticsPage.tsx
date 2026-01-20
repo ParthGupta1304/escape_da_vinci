@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import PageContainer from "@/components/PageContainer";
 import {
   BarChart,
@@ -11,47 +11,151 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-
-const numericStats = {
-  tenure: {
-    mean: 32.4,
-    median: 29,
-    std: 24.6,
-    skewness: 0.24,
-    kurtosis: -1.23,
-    cv: 0.76,
-  },
-  monthly_charges: {
-    mean: 64.76,
-    median: 70.35,
-    std: 30.09,
-    skewness: -0.22,
-    kurtosis: -1.24,
-    cv: 0.46,
-  },
-  total_charges: {
-    mean: 2283.3,
-    median: 1397.5,
-    std: 2266.8,
-    skewness: 1.03,
-    kurtosis: -0.07,
-    cv: 0.99,
-  },
-};
-
-const categoricalData = [
-  { category: "Male", count: 3555, percent: 50.5 },
-  { category: "Female", count: 3488, percent: 49.5 },
-];
+import { useDatasetStore } from "@/lib/datasetStore";
 
 export default function DescriptiveAnalyticsPage() {
-  const [selectedColumn, setSelectedColumn] = useState("tenure");
+  const store = useDatasetStore();
+  const { descriptiveStats, columnProfile, loading, errors } = store;
+  const isLoading = loading.descriptive;
+  const error = errors.descriptive;
+
+  // Get numeric and categorical columns from store
+  const numericColumns = useMemo(() => {
+    return columnProfile.filter(
+      (col) => col.detectedType === "continuous" || col.detectedType === "discrete"
+    );
+  }, [columnProfile]);
+
+  const categoricalColumns = useMemo(() => {
+    return columnProfile.filter((col) => col.detectedType === "categorical");
+  }, [columnProfile]);
+
+  const allColumns = useMemo(() => {
+    return [...numericColumns, ...categoricalColumns];
+  }, [numericColumns, categoricalColumns]);
+
+  const [selectedColumn, setSelectedColumn] = useState<string>("");
+
+  // Set default selected column when data loads
+  useMemo(() => {
+    if (allColumns.length > 0 && !selectedColumn) {
+      setSelectedColumn(allColumns[0].column);
+    }
+  }, [allColumns, selectedColumn]);
+
+  // Get stats for selected column
+  const selectedNumericStats = useMemo(() => {
+    if (!selectedColumn) return null;
+    return descriptiveStats.numeric.find((s) => s.column === selectedColumn);
+  }, [descriptiveStats.numeric, selectedColumn]);
+
+  const selectedCategoricalStats = useMemo(() => {
+    if (!selectedColumn) return null;
+    return descriptiveStats.categorical.find((s) => s.column === selectedColumn);
+  }, [descriptiveStats.categorical, selectedColumn]);
+
+  const isNumeric = numericColumns.some((c) => c.column === selectedColumn);
+  const isCategorical = categoricalColumns.some((c) => c.column === selectedColumn);
+
+  // Generate histogram data for numeric columns
+  const histogramData = useMemo(() => {
+    if (!selectedNumericStats) return [];
+    const { min, max, mean, std } = selectedNumericStats;
+    // Generate approximate histogram bins
+    const range = max - min;
+    const binCount = 7;
+    const binWidth = range / binCount;
+    const bins = [];
+    for (let i = 0; i < binCount; i++) {
+      const binStart = min + i * binWidth;
+      const binEnd = binStart + binWidth;
+      // Approximate normal distribution around mean
+      const z = (binStart + binEnd) / 2;
+      const normalizedZ = (z - mean) / (std || 1);
+      const count = Math.round(
+        1000 * Math.exp(-0.5 * normalizedZ * normalizedZ)
+      );
+      bins.push({
+        range: `${binStart.toFixed(0)}-${binEnd.toFixed(0)}`,
+        count: Math.max(50, count),
+      });
+    }
+    return bins;
+  }, [selectedNumericStats]);
+
+  // Generate frequency data for categorical columns
+  const frequencyData = useMemo(() => {
+    if (!selectedCategoricalStats) return [];
+    return (
+      selectedCategoricalStats.topCategories?.map((cat) => ({
+        category: cat.value,
+        count: cat.count,
+        percent: cat.percent,
+      })) || []
+    );
+  }, [selectedCategoricalStats]);
+
+  // Empty state
+  if (!isLoading && allColumns.length === 0) {
+    return (
+      <PageContainer
+        title="Descriptive Analytics"
+        subtitle="TIER 3 — Statistical summaries and distribution analysis"
+      >
+        <div
+          style={{
+            padding: "64px",
+            textAlign: "center",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--border-subtle)",
+            color: "var(--text-tertiary)",
+            fontSize: "14px",
+          }}
+        >
+          No descriptive statistics available. Please upload a dataset first.
+        </div>
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer
       title="Descriptive Analytics"
       subtitle="TIER 3 — Statistical summaries and distribution analysis"
     >
+      {/* Loading State */}
+      {isLoading && (
+        <div
+          style={{
+            padding: "24px",
+            textAlign: "center",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--border-subtle)",
+            marginBottom: "24px",
+            color: "var(--text-secondary)",
+            fontSize: "14px",
+          }}
+        >
+          Computing descriptive statistics...
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div
+          style={{
+            padding: "16px 20px",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--status-error)",
+            color: "var(--status-error)",
+            fontSize: "13px",
+            marginBottom: "24px",
+          }}
+        >
+          Error: {error}
+        </div>
+      )}
+
       {/* Column Selector */}
       <div style={{ marginBottom: "32px" }}>
         <div
@@ -74,22 +178,21 @@ export default function DescriptiveAnalyticsPage() {
             fontSize: "13px",
             color: "var(--text-secondary)",
             cursor: "pointer",
-            minWidth: "250px",
+            minWidth: "300px",
           }}
         >
-          <option value="tenure">tenure (Continuous Numeric)</option>
-          <option value="monthly_charges">
-            monthly_charges (Continuous Numeric)
-          </option>
-          <option value="total_charges">
-            total_charges (Continuous Numeric)
-          </option>
-          <option value="gender">gender (Categorical)</option>
+          {allColumns.map((col) => (
+            <option key={col.column} value={col.column}>
+              {col.column} ({col.detectedType === "continuous" || col.detectedType === "discrete"
+                ? `${col.detectedType === "continuous" ? "Continuous" : "Discrete"} Numeric`
+                : "Categorical"})
+            </option>
+          ))}
         </select>
       </div>
 
-      {/* Stats Display */}
-      {selectedColumn in numericStats && (
+      {/* Numeric Stats Display */}
+      {isNumeric && selectedNumericStats && (
         <>
           <div
             style={{
@@ -102,9 +205,14 @@ export default function DescriptiveAnalyticsPage() {
               border: "1px solid var(--border-subtle)",
             }}
           >
-            {Object.entries(
-              numericStats[selectedColumn as keyof typeof numericStats]
-            ).map(([key, value]) => (
+            {[
+              { key: "mean", value: selectedNumericStats.mean },
+              { key: "median", value: selectedNumericStats.median },
+              { key: "std", value: selectedNumericStats.std },
+              { key: "skewness", value: selectedNumericStats.skewness },
+              { key: "kurtosis", value: selectedNumericStats.kurtosis },
+              { key: "cv", value: selectedNumericStats.cv },
+            ].map(({ key, value }) => (
               <div key={key}>
                 <div
                   style={{
@@ -123,7 +231,49 @@ export default function DescriptiveAnalyticsPage() {
                     color: "var(--text-primary)",
                   }}
                 >
-                  {value.toFixed(2)}
+                  {typeof value === "number" ? value.toFixed(2) : "—"}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Range Stats */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: "24px",
+              marginBottom: "48px",
+              padding: "24px",
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border-subtle)",
+            }}
+          >
+            {[
+              { key: "min", value: selectedNumericStats.min },
+              { key: "q25", value: selectedNumericStats.q25 },
+              { key: "q75", value: selectedNumericStats.q75 },
+              { key: "max", value: selectedNumericStats.max },
+            ].map(({ key, value }) => (
+              <div key={key}>
+                <div
+                  style={{
+                    fontSize: "11px",
+                    color: "var(--text-tertiary)",
+                    marginBottom: "8px",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {key === "q25" ? "25th Percentile" : key === "q75" ? "75th Percentile" : key}
+                </div>
+                <div
+                  style={{
+                    fontSize: "20px",
+                    fontWeight: 600,
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  {typeof value === "number" ? value.toFixed(2) : "—"}
                 </div>
               </div>
             ))}
@@ -139,7 +289,7 @@ export default function DescriptiveAnalyticsPage() {
                 marginBottom: "16px",
               }}
             >
-              Distribution
+              Distribution (Approximate)
             </h3>
             <div
               style={{
@@ -150,17 +300,7 @@ export default function DescriptiveAnalyticsPage() {
               }}
             >
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={[
-                    { range: "0-10", count: 450 },
-                    { range: "10-20", count: 890 },
-                    { range: "20-30", count: 1240 },
-                    { range: "30-40", count: 1450 },
-                    { range: "40-50", count: 1380 },
-                    { range: "50-60", count: 980 },
-                    { range: "60-70", count: 653 },
-                  ]}
-                >
+                <BarChart data={histogramData}>
                   <CartesianGrid
                     strokeDasharray="3 3"
                     stroke="var(--border-subtle)"
@@ -187,7 +327,8 @@ export default function DescriptiveAnalyticsPage() {
         </>
       )}
 
-      {selectedColumn === "gender" && (
+      {/* Categorical Stats Display */}
+      {isCategorical && selectedCategoricalStats && (
         <>
           <div
             style={{
@@ -218,7 +359,7 @@ export default function DescriptiveAnalyticsPage() {
                   color: "var(--text-primary)",
                 }}
               >
-                2
+                {selectedCategoricalStats.uniqueCount}
               </div>
             </div>
             <div>
@@ -239,7 +380,7 @@ export default function DescriptiveAnalyticsPage() {
                   color: "var(--text-primary)",
                 }}
               >
-                0.99
+                {selectedCategoricalStats.entropy?.toFixed(2) || "—"}
               </div>
             </div>
             <div>
@@ -260,7 +401,8 @@ export default function DescriptiveAnalyticsPage() {
                   color: "var(--text-primary)",
                 }}
               >
-                Male (50.5%)
+                {selectedCategoricalStats.dominantCategory} (
+                {selectedCategoricalStats.dominantPct?.toFixed(1)}%)
               </div>
             </div>
           </div>
@@ -286,7 +428,7 @@ export default function DescriptiveAnalyticsPage() {
               }}
             >
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categoricalData}>
+                <BarChart data={frequencyData}>
                   <CartesianGrid
                     strokeDasharray="3 3"
                     stroke="var(--border-subtle)"
@@ -335,14 +477,36 @@ export default function DescriptiveAnalyticsPage() {
           Distribution Insights
         </div>
         <p>
-          {selectedColumn === "tenure" &&
-            "Near-normal distribution with slight positive skew (0.24). Coefficient of variation (0.76) indicates moderate relative dispersion. Negative kurtosis suggests lighter tails than normal distribution."}
-          {selectedColumn === "monthly_charges" &&
-            "Slight negative skew (-0.22) indicates left-leaning distribution. Moderate coefficient of variation (0.46) suggests reasonable consistency across customers."}
-          {selectedColumn === "total_charges" &&
-            "Positive skew (1.03) with high coefficient of variation (0.99) indicates right-skewed distribution with substantial variability, typical for cumulative financial metrics."}
-          {selectedColumn === "gender" &&
-            "Balanced binary distribution with near-equal representation. High entropy (0.99) confirms minimal bias toward either category."}
+          {selectedNumericStats && (
+            <>
+              {selectedNumericStats.skewness > 0.5
+                ? `Positive skew (${selectedNumericStats.skewness.toFixed(2)}) indicates right-skewed distribution with longer right tail. `
+                : selectedNumericStats.skewness < -0.5
+                ? `Negative skew (${selectedNumericStats.skewness.toFixed(2)}) indicates left-skewed distribution with longer left tail. `
+                : `Near-normal distribution with slight skew (${selectedNumericStats.skewness.toFixed(2)}). `}
+              Coefficient of variation ({selectedNumericStats.cv.toFixed(2)}) indicates{" "}
+              {selectedNumericStats.cv > 0.8
+                ? "high"
+                : selectedNumericStats.cv > 0.3
+                ? "moderate"
+                : "low"}{" "}
+              relative dispersion.
+            </>
+          )}
+          {selectedCategoricalStats && (
+            <>
+              {selectedCategoricalStats.uniqueCount <= 2
+                ? "Binary distribution"
+                : `Multi-class distribution with ${selectedCategoricalStats.uniqueCount} categories`}
+              .{" "}
+              {selectedCategoricalStats.entropy && selectedCategoricalStats.entropy > 0.9
+                ? "High entropy confirms balanced distribution across categories."
+                : selectedCategoricalStats.entropy && selectedCategoricalStats.entropy < 0.5
+                ? "Low entropy indicates imbalanced distribution with dominant category."
+                : "Moderate entropy suggests some category imbalance."}
+            </>
+          )}
+          {!selectedNumericStats && !selectedCategoricalStats && "Select a column to view distribution insights."}
         </p>
       </div>
     </PageContainer>

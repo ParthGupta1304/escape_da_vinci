@@ -3,7 +3,7 @@ import { trainBaselineModel } from "@/lib/predictive";
 
 export async function POST(request: NextRequest) {
   try {
-    const { data, columnProfile } = await request.json();
+    const { data, columnProfile, targetColumn } = await request.json();
 
     if (!data || !columnProfile) {
       return NextResponse.json(
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const results = trainBaselineModel(data, columnProfile);
+    const results = trainBaselineModel(data, columnProfile, targetColumn);
 
     if (!results) {
       return NextResponse.json(

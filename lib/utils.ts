@@ -105,18 +105,39 @@ export function detectDatetimeColumns(
 
   const sample = data.slice(0, Math.min(100, data.length));
   let parseableCount = 0;
+  let validDateCount = 0;
 
   for (const row of sample) {
     const value = row[columnName];
     if (value == null || value === "") continue;
 
+    // Skip if the value is a pure number (not a date string)
+    if (typeof value === 'number') {
+      continue; // Don't treat numbers as dates
+    }
+    
+    const strValue = String(value);
+    
+    // Check if it looks like a date (has separators like -, /, or :)
+    const hasDateSeparator = /[-/:.]/.test(strValue);
+    if (!hasDateSeparator) {
+      continue; // Pure numbers without separators are not dates
+    }
+
     const date = new Date(value);
     if (!isNaN(date.getTime())) {
-      parseableCount++;
+      // Additional check: year should be reasonable (1900-2100)
+      const year = date.getFullYear();
+      if (year >= 1900 && year <= 2100) {
+        parseableCount++;
+        validDateCount++;
+      }
     }
   }
 
-  return parseableCount / sample.length >= 0.7;
+  // Need at least 70% valid dates AND at least some dates found
+  const nonNullCount = sample.filter(row => row[columnName] != null && row[columnName] !== "").length;
+  return nonNullCount > 0 && validDateCount / nonNullCount >= 0.7;
 }
 
 /**
