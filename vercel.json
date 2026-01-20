@@ -6,9 +6,6 @@
       "use": "@vercel/next"
     }
   ],
-  "env": {
-    "PYTHON_BACKEND_URL": "@python_backend_url"
-  },
   "routes": [
     {
       "src": "/api/.*",
