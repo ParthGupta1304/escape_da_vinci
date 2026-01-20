@@ -3,6 +3,7 @@
 ## Architecture
 
 This application consists of two parts:
+
 1. **Next.js Frontend + API** (Deploy to Vercel)
 2. **Python FastAPI Backend** (Deploy to Render/Railway/Cloud Run)
 
@@ -11,12 +12,14 @@ This application consists of two parts:
 ## Part 1: Deploy Next.js to Vercel (5 minutes)
 
 ### Prerequisites
+
 - Vercel account (free)
 - GitHub repository
 
 ### Steps
 
 1. **Push your code to GitHub** (if not already done)
+
    ```bash
    git add .
    git commit -m "Ready for deployment"
@@ -24,6 +27,7 @@ This application consists of two parts:
    ```
 
 2. **Deploy to Vercel**
+
    - Go to https://vercel.com
    - Click "New Project"
    - Import your GitHub repository
@@ -49,14 +53,16 @@ This application consists of two parts:
 #### Steps
 
 1. **Update Python Backend for Production**
-   
+
    Already done! The `python_backend/main.py` is production-ready with CORS configured.
 
 2. **Create Render Account**
+
    - Go to https://render.com
    - Sign up with GitHub
 
 3. **Create New Web Service**
+
    - Click "New +" → "Web Service"
    - Connect your GitHub repository
    - Configure:
@@ -71,6 +77,7 @@ This application consists of two parts:
      ```
 
 4. **Add Environment Variables**
+
    - Go to Environment tab
    - Add:
      ```
@@ -78,10 +85,12 @@ This application consists of two parts:
      ```
 
 5. **Deploy**
+
    - Click "Create Web Service"
    - Wait 3-5 minutes for deployment
 
 6. **Get Backend URL**
+
    - Copy the URL (e.g., `https://automl-python-backend.onrender.com`)
 
 7. **Update Vercel**
@@ -140,11 +149,13 @@ docker run -p 8000:8000 automl-python
 ## Verification
 
 ### Test Next.js Frontend
+
 ```bash
 curl https://your-vercel-app.vercel.app/
 ```
 
 ### Test Python Backend
+
 ```bash
 # Health check
 curl https://your-python-backend.onrender.com/
@@ -156,6 +167,7 @@ curl -X POST https://your-python-backend.onrender.com/api/python/column-types \
 ```
 
 ### Test Integration
+
 1. Open your Vercel URL
 2. Upload a CSV file
 3. Check browser console - should see "Using Python backend for column classification"
@@ -165,16 +177,19 @@ curl -X POST https://your-python-backend.onrender.com/api/python/column-types \
 ## Cost Estimates
 
 ### Free Tier (Both Deployed Free)
+
 - **Vercel**: Unlimited for personal projects
 - **Render**: 750 hours/month free (enough for 1 service 24/7)
 - **Total**: $0/month
 
 ### Production Tier
+
 - **Vercel Pro**: $20/month (better performance, analytics)
 - **Render Starter**: $7/month (always-on, faster cold starts)
 - **Total**: ~$27/month
 
 ### Enterprise Tier
+
 - **Vercel Enterprise**: Custom pricing
 - **Google Cloud Run**: Pay per request (~$0.40 per million requests)
 - **AWS/Azure**: $50-200/month depending on usage
@@ -198,20 +213,24 @@ curl -X POST https://your-python-backend.onrender.com/api/python/column-types \
 ## Troubleshooting
 
 ### Python Backend Not Responding
+
 - Check Render logs for errors
 - Verify all dependencies in `requirements.txt`
 - Ensure `PORT` environment variable is set correctly
 
 ### CORS Errors
+
 - Verify Python backend CORS settings allow your Vercel domain
 - Update `allow_origins` in `main.py` if needed
 
 ### TypeScript Fallback Always Used
+
 - Check `PYTHON_BACKEND_URL` in Vercel
 - Test Python backend URL directly
 - Check browser console for connection errors
 
 ### Slow Cold Starts (Render Free Tier)
+
 - Free tier spins down after 15 minutes of inactivity
 - First request after idle takes 30-60 seconds
 - Solution: Upgrade to paid tier ($7/month) for always-on
@@ -221,11 +240,13 @@ curl -X POST https://your-python-backend.onrender.com/api/python/column-types \
 ## Monitoring
 
 ### Vercel Analytics
+
 - Built-in web analytics
 - Real User Monitoring (RUM)
 - Core Web Vitals tracking
 
 ### Render Monitoring
+
 - Resource usage graphs
 - Request metrics
 - Error logs
@@ -240,6 +261,7 @@ curl -X POST https://your-python-backend.onrender.com/api/python/column-types \
 **Vercel**: Auto-scales automatically, no action needed
 
 **Python Backend**:
+
 - Free tier: Good for 100-500 requests/day
 - Paid tier: Good for 10,000+ requests/day
 - Need more? Consider:
